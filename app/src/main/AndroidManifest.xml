@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+    package="com.example.counter">
 
     <application
         android:allowBackup="true"
@@ -13,7 +13,38 @@
         android:theme="@style/Theme.Counter">
         <activity
             android:name=".CountActivity"
-            android:exported="true">
+            android:exported="true"
+            android:label="1 CountActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".CountDelayActivity"
+            android:exported="true"
+            android:label="2 CountDelayActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".CountDelayPrActivity"
+            android:exported="true"
+            android:label="3 CountDelayPrActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".CountDelayVmActivity"
+            android:exported="true"
+            android:label="4 CountDelayVmActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
