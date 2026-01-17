@@ -22,6 +22,10 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".IntroActivity"
+            android:exported="false"
+            android:label="Welcome" />
+        <activity
             android:name=".CountDelayActivity"
             android:exported="true"
             android:label="2 CountDelayActivity">

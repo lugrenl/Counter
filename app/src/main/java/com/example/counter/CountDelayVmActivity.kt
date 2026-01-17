@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import com.example.counter.databinding.CountActivityBinding
+import com.example.counter.utils.checkAndShowIntro
 
 import com.example.counter.viewmodel.CountViewModel
 
@@ -15,6 +16,9 @@ class CountDelayVmActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        checkAndShowIntro()
+
         binding = CountActivityBinding.inflate(layoutInflater)
         setContentView(binding.root)
 

@@ -8,22 +8,28 @@ class CountPresenter : MvpPresenter<CountDelayView>() {
     private val presenterScope by lazy {
         CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     }
-
     private var count = 0
 
-    fun getCount() = count
+    fun initCount(value: Int) {
+        count = value
+        viewState.showCount(count)
+    }
 
     fun buttonPlusOneClicked() {
         presenterScope.launch {
             delay(2000)
-            viewState.showCount(++count)
+            count++
+            viewState.showCount(count)
+            viewState.saveCount(count)
         }
     }
 
     fun buttonMinusOneClicked() {
         presenterScope.launch {
             delay(2000)
-            viewState.showCount(--count)
+            count--
+            viewState.showCount(count)
+            viewState.saveCount(count)
         }
     }
 

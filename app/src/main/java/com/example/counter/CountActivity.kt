@@ -1,25 +1,30 @@
 package com.example.counter
 
+import android.content.Context
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.example.counter.databinding.CountActivityBinding
+import com.example.counter.utils.KEY_COUNT
+import com.example.counter.utils.PREFS_SAVE_NAME
+import com.example.counter.utils.checkAndShowIntro
 
 class CountActivity : AppCompatActivity() {
-
-    companion object {
-        private const val KEY_COUNT = "KEY_COUNT"
-    }
 
     private var count = 0
     private lateinit var binding: CountActivityBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        checkAndShowIntro()
+        
         binding = CountActivityBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         if (savedInstanceState != null) {
             count = savedInstanceState.getInt(KEY_COUNT)
+        } else {
+            count = getCounterData(this)
         }
 
         binding.message.text = "$count"
@@ -36,5 +41,18 @@ class CountActivity : AppCompatActivity() {
     private fun updateCount(newCount: Int) {
         count = newCount
         binding.message.text = "$count"
+        saveCounterData(this, count)
+    }
+
+    private fun getCounterData(context: Context): Int {
+        val prefs = getSharedPreferences(PREFS_SAVE_NAME, Context.MODE_PRIVATE)
+
+        return prefs.getInt(KEY_COUNT, 0)
+    }
+
+    private fun saveCounterData(context: Context,value: Int) {
+        val prefs = getSharedPreferences(PREFS_SAVE_NAME, Context.MODE_PRIVATE)
+
+        prefs.edit().putInt(KEY_COUNT, value).apply()
     }
 }
