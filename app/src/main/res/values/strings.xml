@@ -6,4 +6,7 @@
     <string name="welcome_to_counter_app">Welcome to Counter App!</string>
     <string name="intro_screen_text">This is an intro screen shown every 3rd launch.</string>
     <string name="continue_text">Continue</string>
+    <string name="search_by_name">Search by name</string>
+    <string name="search">Search</string>
+    <string name="search_results_will_appear_here">Search results will appear here</string>
 </resources>

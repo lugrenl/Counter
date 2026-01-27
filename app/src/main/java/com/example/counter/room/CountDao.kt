@@ -10,6 +10,9 @@ interface CountDao {
     @Query("SELECT * FROM entities WHERE name = :name")
     suspend fun getCounts(name: String): List<Count>
 
+    @Query("SELECT * FROM entities WHERE name LIKE '%' || :query || '%'")
+    suspend fun searchByName(query: String): List<Count>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun setCount(count: Count)
 }

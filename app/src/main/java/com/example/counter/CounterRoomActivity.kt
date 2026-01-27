@@ -4,7 +4,7 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.room.Room
-import com.example.counter.databinding.CountActivityBinding
+import com.example.counter.databinding.CountRoomActivityBinding
 import com.example.counter.room.Count
 import com.example.counter.room.CountDatabase
 import com.example.counter.utils.checkAndShowIntro
@@ -25,21 +25,24 @@ class CountRoomActivity : AppCompatActivity() {
     private val countDao by lazy { countDatabase.countDao() }
 
     private var count = 0
-    private lateinit var binding: CountActivityBinding
+    private lateinit var binding: CountRoomActivityBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         checkAndShowIntro()
 
-        binding = CountActivityBinding.inflate(layoutInflater)
+        binding = CountRoomActivityBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         lifecycleScope.launch {
             if (savedInstanceState != null) {
                 count = savedInstanceState.getInt(KEY_COUNT)
             } else {
-                count = countDao.getCounts("count_x").first().value
+                val counts = countDao.getCounts("count_x")
+                if (counts.isNotEmpty()) {
+                    count = counts.first().value
+                }
             }
 
             binding.message.text = "$count"
@@ -47,6 +50,23 @@ class CountRoomActivity : AppCompatActivity() {
 
         binding.buttonMinus.setOnClickListener { updateCount(count - 1) }
         binding.buttonPlus.setOnClickListener { updateCount(count + 1) }
+
+        binding.searchButton.setOnClickListener {
+            val query = binding.searchEditText.text.toString()
+            performSearch(query)
+        }
+    }
+
+    private fun performSearch(query: String) {
+        lifecycleScope.launch {
+            val results = countDao.searchByName(query)
+            val resultText = if (results.isEmpty()) {
+                "No results found"
+            } else {
+                results.joinToString("\n") { "${it.name}: ${it.value}" }
+            }
+            binding.searchResults.text = resultText
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
