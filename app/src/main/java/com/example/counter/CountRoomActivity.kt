@@ -1,14 +1,18 @@
 package com.example.counter
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
 import androidx.room.Room
 import com.example.counter.databinding.CountRoomActivityBinding
 import com.example.counter.room.Count
 import com.example.counter.room.CountDatabase
 import com.example.counter.utils.checkAndShowIntro
-import kotlinx.coroutines.launch
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.disposables.CompositeDisposable
+import io.reactivex.rxjava3.kotlin.plusAssign
+import io.reactivex.rxjava3.kotlin.subscribeBy
+import io.reactivex.rxjava3.schedulers.Schedulers
 
 class CountRoomActivity : AppCompatActivity() {
 
@@ -25,6 +29,7 @@ class CountRoomActivity : AppCompatActivity() {
     private val countDao by lazy { countDatabase.countDao() }
 
     private var count = 0
+    private var disposables = CompositeDisposable()
     private lateinit var binding: CountRoomActivityBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,22 +45,26 @@ class CountRoomActivity : AppCompatActivity() {
         if (savedInstanceState != null) {
             count = savedInstanceState.getInt(KEY_COUNT)
             binding.message.text = "$count"
-        }
-
-        // 2. ВТОРАЯ ОЧЕРЕДЬ (База данных Room с индексом)
-        // Запускаем асинхронное получение данных. Благодаря индексу в Entity,
-        // запрос к Room будет работать максимально быстро.
-        lifecycleScope.launch {
-            val counts = countDao.getCounts(COUNT_KEY_NAME)
-            if (counts.isNotEmpty()) {
-                val dbValue = counts.first().value
-
-                // Если данные в БД отличаются от того, что мы показали из "кеша", обновляем UI
-                if (count != dbValue) {
-                    count = dbValue
-                    binding.message.text = "$count"
-                }
-            }
+        } else {
+            // 2. ВТОРАЯ ОЧЕРЕДЬ (База данных Room с индексом)
+            // Запускаем асинхронное получение данных с помощью RxJava.
+            // Благодаря индексу в Entity, запрос к Room будет работать максимально быстро.
+            disposables += countDao.getCounts(COUNT_KEY_NAME)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeBy(
+                    onSuccess = {
+                        val dbValue = it.first().value
+                        // Если данные в БД отличаются от того, что мы показали из "кеша", обновляем UI
+                        if (count != dbValue) {
+                            count = dbValue
+                            binding.message.text = "$count"
+                        }
+                    },
+                    onError = {
+                        Toast.makeText(this, "Error", Toast.LENGTH_LONG).show()
+                    }
+                )
         }
 
         binding.buttonMinus.setOnClickListener { updateCount(count - 1) }
@@ -67,6 +76,11 @@ class CountRoomActivity : AppCompatActivity() {
         }
     }
 
+    override fun onDestroy() {
+        disposables.dispose()
+        super.onDestroy()
+    }
+
     private fun updateCount(newCount: Int) {
         count = newCount
         binding.message.text = "$count"
@@ -74,24 +88,31 @@ class CountRoomActivity : AppCompatActivity() {
     }
 
     private fun saveCounterData(value: Int) {
-        lifecycleScope.launch {
-            // Благодаря индексу unique = true, OnConflictStrategy.REPLACE
-            // будет работать как эффективное обновление кеш-записи
-            val countEntity = Count(
-                _id = 1, // Фиксированный ID для "кешированной" записи
-                name = COUNT_KEY_NAME,
-                value = value
-            )
-            countDao.setCount(countEntity)
-        }
+        // Благодаря индексу unique = true, OnConflictStrategy.REPLACE
+        // будет работать как эффективное обновление кеш-записи
+        val countEntity = Count(
+            _id = 1, // Фиксированный ID для "кешированной" записи
+            name = COUNT_KEY_NAME,
+            value = value
+        )
+        disposables += countDao.setCount(countEntity)
+            .subscribeOn(Schedulers.io())
+            .subscribe()
     }
 
     private fun performSearch(query: String) {
-        lifecycleScope.launch {
-            val results = countDao.searchByName(query)
-            binding.searchResults.text = if (results.isEmpty()) "No results" else
-                results.joinToString("\n") { "${it.name}: ${it.value}" }
-        }
+        disposables += countDao.searchByName(query)
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribeBy(
+                onSuccess = { results ->
+                    binding.searchResults.text = if (results.isEmpty()) "No results" else
+                        results.joinToString("\n") { "${it.name}: ${it.value}" }
+                },
+                onError = {
+                    Toast.makeText(this, "Search Error", Toast.LENGTH_LONG).show()
+                }
+            )
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
