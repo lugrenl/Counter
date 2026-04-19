@@ -3,16 +3,20 @@ package com.example.counter
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.widget.doOnTextChanged
 import androidx.room.Room
 import com.example.counter.databinding.CountRoomActivityBinding
 import com.example.counter.room.Count
 import com.example.counter.room.CountDatabase
 import com.example.counter.utils.checkAndShowIntro
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.kotlin.plusAssign
 import io.reactivex.rxjava3.kotlin.subscribeBy
 import io.reactivex.rxjava3.schedulers.Schedulers
+import io.reactivex.rxjava3.subjects.PublishSubject
+import java.util.concurrent.TimeUnit
 
 class CountRoomActivity : AppCompatActivity() {
 
@@ -30,6 +34,7 @@ class CountRoomActivity : AppCompatActivity() {
 
     private var count = 0
     private var disposables = CompositeDisposable()
+    private val searchSubject = PublishSubject.create<String>()
     private lateinit var binding: CountRoomActivityBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,10 +75,43 @@ class CountRoomActivity : AppCompatActivity() {
         binding.buttonMinus.setOnClickListener { updateCount(count - 1) }
         binding.buttonPlus.setOnClickListener { updateCount(count + 1) }
 
+        setupSearchPipeline()
+
         binding.searchButton.setOnClickListener {
             val query = binding.searchEditText.text.toString()
-            performSearch(query)
+            searchSubject.onNext(query)
         }
+
+        binding.searchEditText.doOnTextChanged { text, _, _, _ ->
+            searchSubject.onNext(text?.toString() ?: "")
+        }
+    }
+
+    private fun setupSearchPipeline() {
+        disposables += searchSubject
+            .debounce(300, TimeUnit.MILLISECONDS)
+            .distinctUntilChanged()
+            .switchMapSingle { query ->
+                if (query.isBlank()) {
+                    Single.just(emptyList<Count>())
+                } else {
+                    countDao.searchByName(query)
+                        .subscribeOn(Schedulers.io())
+                }
+            }
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribeBy(
+                onNext = { results ->
+                    binding.searchResults.text = if (results.isEmpty()) {
+                        if (binding.searchEditText.text.isBlank()) "" else "No results"
+                    } else {
+                        results.joinToString("\n") { "${it.name}: ${it.value}" }
+                    }
+                },
+                onError = {
+                    Toast.makeText(this, "Search Error", Toast.LENGTH_LONG).show()
+                }
+            )
     }
 
     override fun onDestroy() {
@@ -98,21 +136,6 @@ class CountRoomActivity : AppCompatActivity() {
         disposables += countDao.setCount(countEntity)
             .subscribeOn(Schedulers.io())
             .subscribe()
-    }
-
-    private fun performSearch(query: String) {
-        disposables += countDao.searchByName(query)
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribeBy(
-                onSuccess = { results ->
-                    binding.searchResults.text = if (results.isEmpty()) "No results" else
-                        results.joinToString("\n") { "${it.name}: ${it.value}" }
-                },
-                onError = {
-                    Toast.makeText(this, "Search Error", Toast.LENGTH_LONG).show()
-                }
-            )
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
