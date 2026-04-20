@@ -53,10 +53,10 @@ dependencies {
     kapt(libs.androidx.room.compiler)
 
     // RxJava
+    implementation(libs.androidx.room.rxjava3)
     implementation("io.reactivex.rxjava3:rxjava:3.1.12")
     implementation("io.reactivex.rxjava3:rxkotlin:3.0.1")
     implementation("io.reactivex.rxjava3:rxandroid:3.0.2")
-
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -58,12 +58,14 @@ class CountRoomActivity : AppCompatActivity() {
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribeBy(
-                    onSuccess = {
-                        val dbValue = it.first().value
-                        // Если данные в БД отличаются от того, что мы показали из "кеша", обновляем UI
-                        if (count != dbValue) {
-                            count = dbValue
-                            binding.message.text = "$count"
+                    onSuccess = { list ->
+                        val countEntity = list.firstOrNull()
+                        if (countEntity != null) {
+                            val dbValue = countEntity.value
+                            if (count != dbValue) {
+                                count = dbValue
+                                binding.message.text = "$count"
+                            }
                         }
                     },
                     onError = {
@@ -89,7 +91,11 @@ class CountRoomActivity : AppCompatActivity() {
 
     private fun setupSearchPipeline() {
         disposables += searchSubject
-            .debounce(300, TimeUnit.MILLISECONDS)
+            .observeOn(AndroidSchedulers.mainThread())
+            .doOnNext { query ->
+                binding.searchResults.text = if (query.isBlank()) "" else "Searching..."
+            }
+            .debounce(300, TimeUnit.MILLISECONDS, Schedulers.computation())
             .distinctUntilChanged()
             .switchMapSingle { query ->
                 if (query.isBlank()) {
@@ -97,15 +103,21 @@ class CountRoomActivity : AppCompatActivity() {
                 } else {
                     countDao.searchByName(query)
                         .subscribeOn(Schedulers.io())
+                        .onErrorReturnItem(emptyList())
                 }
             }
             .observeOn(AndroidSchedulers.mainThread())
             .subscribeBy(
                 onNext = { results ->
-                    binding.searchResults.text = if (results.isEmpty()) {
-                        if (binding.searchEditText.text.isBlank()) "" else "No results"
+                    val currentQuery = binding.searchEditText.text.toString()
+                    if (currentQuery.isBlank()) {
+                        binding.searchResults.text = ""
                     } else {
-                        results.joinToString("\n") { "${it.name}: ${it.value}" }
+                        binding.searchResults.text = if (results.isEmpty()) {
+                            "No results"
+                        } else {
+                            results.joinToString("\n") { "${it.name}: ${it.value}" }
+                        }
                     }
                 },
                 onError = {
